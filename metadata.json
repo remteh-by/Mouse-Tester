@@ -1,0 +1,6 @@
+{
+  "name": "Mouse Diagnostics Lab",
+  "description": "Интерактивная диагностика мыши: тесты двойного клика, колесика прокрутки, частоты опроса сенсора и ИИ-помощник по ремонту.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
