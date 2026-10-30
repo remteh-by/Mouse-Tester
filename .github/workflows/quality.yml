@@ -1,0 +1,23 @@
+name: Mouse Tester quality
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint && npm test && npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm audit --omit=dev --audit-level=high
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mouse-production-candidate
+          path: dist/
+          retention-days: 14

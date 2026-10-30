@@ -1,395 +1,70 @@
-import { useState, useEffect } from 'react';
-import { ClickEventLog, ScrollEventLog } from './types';
-import MouseIllustration from './components/MouseIllustration';
-import ClickDiagnostics from './components/ClickDiagnostics';
-import ScrollDiagnostics from './components/ScrollDiagnostics';
-import PollingRateDiagnostics from './components/PollingRateDiagnostics';
+import {useEffect,useRef,useState} from 'react';
+import {MouseSession,parseReport,type Report,type Conditions} from './diagnostics';
 import SensorCanvas from './components/SensorCanvas';
-import AIAdvisorPanel from './components/AIAdvisorPanel';
-import { PRESET_GUIDES } from './data/guides';
+import {PRESET_GUIDES} from './data/guides';
+import AIAdvisor from './components/AIAdvisor';
 
-import {
-  Mouse,
-  Sliders,
-  SlidersHorizontal,
-  Activity,
-  PenTool,
-  Bot,
-  BookOpen,
-  Info,
-  Wrench,
-  CheckCircle,
-  HelpCircle,
-  AlertTriangle
-} from 'lucide-react';
-
-export default function App() {
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<'click' | 'scroll' | 'polling' | 'sensor' | 'ai' | 'handbook'>('click');
-
-  // Shared Diagnostic Telemetry logs
-  const [clickLogs, setClickLogs] = useState<ClickEventLog[]>([]);
-  const [scrollLogs, setScrollLogs] = useState<ScrollEventLog[]>([]);
-  const [peakPolling, setPeakPolling] = useState<number>(125);
-
-  // Global mouse illustration highlights
-  const [buttonStates, setButtonStates] = useState({
-    left: false,
-    right: false,
-    middle: false,
-    back: false,
-    forward: false,
-    scrollUp: false,
-    scrollDown: false,
-  });
-
-  // Highlight key features when users click anywhere
-  useEffect(() => {
-    const handleGlobalMouseDown = (e: MouseEvent) => {
-      // Left=0, Middle=1, Right=2, Back=3, Forward=4
-      setButtonStates((prev) => ({
-        ...prev,
-        left: e.button === 0 ? true : prev.left,
-        middle: e.button === 1 ? true : prev.middle,
-        right: e.button === 2 ? true : prev.right,
-        back: e.button === 3 ? true : prev.back,
-        forward: e.button === 4 ? true : prev.forward,
-      }));
+const format=(value:number|null,suffix='')=>value===null?'Не измерено':value.toLocaleString('ru-RU',{maximumFractionDigits:1})+suffix;
+const tabs=[['buttons','Кнопки'],['wheel','Колесо'],['movement','Движение'],['sensor','Рисование'],['report','Отчёт'],['guides','Справочник'],['ai','ИИ-помощник']] as const;
+export default function App(){
+  const [session,setSession]=useState(()=>new MouseSession());
+  const [tab,setTab]=useState<string>('buttons'),[view,setView]=useState(()=>session.report());
+  const [device,setDevice]=useState(''),[comment,setComment]=useState(''),[baseline,setBaseline]=useState<Report|null>(null);
+  const [notice,setNotice]=useState(''),[history,setHistory]=useState<Report[]>([]),[sound,setSound]=useState(false);
+  const panel=useRef<HTMLDivElement>(null),audio=useRef<AudioContext|null>(null),lastSound=useRef(0);
+  const report=()=>session.report(device,comment,baseline?.session_id??null);
+  useEffect(()=>{try{const stored=localStorage.getItem('remteh-mouse-history-v1');if(stored&&stored.length<5*1024*1024){const rows=JSON.parse(stored);if(Array.isArray(rows))setHistory(rows.slice(0,20).map(row=>parseReport(JSON.stringify(row))));}}catch{setNotice('Локальная история недоступна. Экспорт JSON продолжает работать.');}},[]);
+  useEffect(()=>{
+    const timer=setInterval(()=>setView(session.report()),200);
+    const pause=()=>session.pause();window.addEventListener('blur',pause);
+    const visibility=()=>{if(document.hidden)pause();};document.addEventListener('visibilitychange',visibility);
+    return()=>{clearInterval(timer);window.removeEventListener('blur',pause);document.removeEventListener('visibilitychange',visibility);session.pause();};
+  },[session]);
+  useEffect(()=>()=>{void audio.current?.close();audio.current=null;},[]);
+  useEffect(()=>{
+    const element=panel.current;if(!element)return;
+    const source='onpointerrawupdate' in window?'pointerrawupdate':'pointermove';
+    const move=(event:PointerEvent)=>{
+      if(tab!=='movement')return;
+      const samples=event.getCoalescedEvents?.();
+      for(const point of samples?.length?samples:[event])session.pointer(point.timeStamp,point.clientX,point.clientY,source,point.pointerType);
     };
-
-    const handleGlobalMouseUp = (e: MouseEvent) => {
-      setButtonStates((prev) => ({
-        ...prev,
-        left: e.button === 0 ? false : prev.left,
-        middle: e.button === 1 ? false : prev.middle,
-        right: e.button === 2 ? false : prev.right,
-        back: e.button === 3 ? false : prev.back,
-        forward: e.button === 4 ? false : prev.forward,
-      }));
-    };
-
-    const handleGlobalWheel = (e: WheelEvent) => {
-      const isUp = e.deltaY < 0;
-      setButtonStates((prev) => ({
-        ...prev,
-        scrollUp: isUp,
-        scrollDown: !isUp,
-      }));
-
-      const timer = setTimeout(() => {
-        setButtonStates((prev) => ({
-          ...prev,
-          scrollUp: false,
-          scrollDown: false,
-        }));
-      }, 150);
-
-      return () => clearTimeout(timer);
-    };
-
-    // Right-click context menu prevention globally to enable proper Right-Click/Middle-click hold testing
-    const handleContextMenu = (e: Event) => {
-      // Prevent browser default context menu from stealing focus
-      e.preventDefault();
-    };
-
-    window.addEventListener('mousedown', handleGlobalMouseDown);
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    window.addEventListener('wheel', handleGlobalWheel);
-    window.addEventListener('contextmenu', handleContextMenu);
-
-    return () => {
-      window.removeEventListener('mousedown', handleGlobalMouseDown);
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-      window.removeEventListener('wheel', handleGlobalWheel);
-      window.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, []);
-
-  // Update dynamic polling calculations based on sensor logs
-  useEffect(() => {
-    if (activeTab === 'polling') {
-      // PollingRate diagnostics will maintain hertz.
-      // We will listen and capture max stats inside its frame loop.
-    }
-  }, [activeTab]);
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased selection:bg-indigo-500/30 selection:text-white">
-      
-      {/* Decorative ambient background lights */}
-      <div className="absolute top-0 left-1/3 w-96 h-96 bg-indigo-700/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-700/5 rounded-full blur-[120px] pointer-events-none" />
-
-      {/* Primary Navigation Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 border-b border-slate-800 backdrop-blur-md px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-950/80 border border-indigo-800/40 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.15)] flex items-center justify-center">
-            <Mouse className="w-6 h-6 text-indigo-400 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold tracking-tight text-slate-100 uppercase">
-                Mouse Diagnostics & Test Lab
-              </h1>
-              <span className="hidden md:inline px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-mono text-indigo-400 font-bold tracking-wider animate-pulse">
-                v2.1 Pro
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              Комплексный анализ кнопок, скролла, сенсора и умные ИИ-инструкции по ремонту
-            </p>
-          </div>
+    const wheel=(event:WheelEvent)=>{if(tab==='wheel'){event.preventDefault();session.wheel(event.timeStamp,event.deltaX,event.deltaY,event.deltaMode);}};
+    const release=(event:PointerEvent)=>{if(tab==='buttons')session.up(event.button,event.timeStamp);};
+    element.addEventListener(source,move as EventListener);element.addEventListener('wheel',wheel,{passive:false});window.addEventListener('pointerup',release);
+    return()=>{element.removeEventListener(source,move as EventListener);element.removeEventListener('wheel',wheel);window.removeEventListener('pointerup',release);session.pause();};
+  },[session,tab]);
+  function tick(){if(!sound||performance.now()-lastSound.current<100)return;lastSound.current=performance.now();try{const context=audio.current??(audio.current=new AudioContext());void context.resume();const oscillator=context.createOscillator(),gain=context.createGain();gain.gain.value=.02;oscillator.frequency.value=600;oscillator.connect(gain);gain.connect(context.destination);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();};oscillator.start();oscillator.stop(context.currentTime+.025);}catch{setNotice('Звук недоступен; измерения продолжаются.');}}
+  function save(){try{const current=report(),rows=[current,...history.filter(row=>row.session_id!==current.session_id)].slice(0,20);localStorage.setItem('remteh-mouse-history-v1',JSON.stringify(rows));setHistory(rows);setNotice('Сессия сохранена только в этом браузере.');return true;}catch{setNotice('Не удалось сохранить историю. Текущая сессия остаётся открытой; экспортируйте JSON.');return false;}}
+  function download(){const blob=new Blob([JSON.stringify(report(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='remteh-mouse-'+session.id+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  function conditions(change:Partial<Conditions>){if(session.totalEvents)return;session.conditions={...session.conditions,...change};setView(session.report());}
+  const measured=view.summary,locked=session.totalEvents>0;
+  return <div className="lab-shell">
+    <header className="lab-header"><div><p className="eyebrow">REMTEH · DEVICE LAB</p><h1>Mouse Tester</h1><p>Наблюдения, которые можно сохранить и сравнить.</p></div><span className="version">1.1.0 · Preview</span></header>
+    <div className="session-bar"><label>Устройство<input value={device} maxLength={160} placeholder="Модель, без серийного номера" onChange={e=>setDevice(e.target.value)}/></label><label>Источник ввода<select disabled={locked} value={view.conditions.input} onChange={e=>conditions({input:e.target.value as Conditions['input']})}><option value="unknown">Не указан</option><option value="mouse">Мышь</option><option value="trackpad">Трекпад</option></select></label><button onClick={()=>{if(!save())return;const next=new MouseSession();setSession(next);setView(next.report());setComment('');setNotice('Предыдущая сессия сохранена. Начата новая.');}}>Новая сессия</button><label className="check"><input type="checkbox" checked={sound} onChange={e=>setSound(e.target.checked)}/>Звук нажатия</label></div>
+    <nav className="tabs" aria-label="Проверки">{tabs.map(([id,title])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}>{title}</button>)}</nav>
+    <p role="status" className="notice">{notice}</p>
+    <main className="lab-grid">
+      <section className="workspace" aria-label="Рабочая область">
+      {['buttons','wheel','movement'].includes(tab)&&<>
+        <h2>{tab==='buttons'?'Нажатия и удержание':tab==='wheel'?'Пошаговое вращение колеса':'Частота событий браузера'}</h2>
+        {tab==='buttons'&&<div className="conditions"><label>Сценарий<select disabled={locked} value={view.conditions.clickMode} onChange={e=>conditions({clickMode:e.target.value as Conditions['clickMode']})}><option value="free">Свободные клики — без диагноза</option><option value="single">Одиночные нажатия с паузой</option></select></label><label>Порог подозрения, мс<input type="number" min={20} max={200} disabled={locked} value={view.conditions.bounceThresholdMs} onChange={e=>conditions({bounceThresholdMs:Math.max(20,Math.min(200,Number(e.target.value)||60))})}/></label><p>В одиночном тесте нажимайте и отпускайте кнопку раз в секунду. Быстрый повтор после отпускания — только подозрение. Обычный двойной клик в свободном режиме не считается дефектом.</p></div>}
+        {tab==='wheel'&&<div className="conditions"><label>Сценарий<select disabled={locked} value={view.conditions.scrollMode} onChange={e=>conditions({scrollMode:e.target.value as Conditions['scrollMode']})}><option value="free">Свободная прокрутка</option><option value="down">Только вниз, по одному шагу</option><option value="up">Только вверх, по одному шагу</option></select></label><p>Считаются короткие противоположные шаги в заданном направлении. Пауза, горизонтальная прокрутка и трекпад не признаются поломкой энкодера.</p></div>}
+        {tab==='movement'&&<p>Двигайте мышью внутри панели непрерывно несколько секунд. Измеряется доставка событий браузеру. USB polling rate, DPI и аппаратная задержка здесь не измеряются.</p>}
+        <div ref={panel} className="test-area" tabIndex={0} role="region" aria-label="Панель измерений" onContextMenu={e=>e.preventDefault()} onPointerDown={e=>{if(tab==='buttons'&&e.pointerType==='mouse'){session.down(e.button,e.timeStamp);tick();}}}>
+          <span className="target-mark" aria-hidden="true">＋</span><strong>{tab==='buttons'?'Нажимайте кнопки здесь':tab==='wheel'?'Прокручивайте здесь':'Двигайте мышью здесь'}</strong><span>Измерения остаются при переключении вкладок</span>
         </div>
-
-        {/* Live system monitoring bar */}
-        <div className="flex items-center gap-4 text-xs font-mono">
-          <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-            <span className="text-slate-500">Драйвер:</span>
-            <span className="text-slate-300 font-bold text-[11px]">Готов</span>
-          </div>
-          <div className="hidden xl:flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-            <span className="text-slate-500">Кликов зарегистрировано:</span>
-            <span className="text-indigo-400 font-bold">{clickLogs.length}</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Workspace Layout Wrapper */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 xl:grid-cols-4 gap-6 relative z-10">
-        
-        {/* Left Side Static Frame - Interactive Mouse status vector schematic */}
-        <div className="xl:col-span-1 flex flex-col gap-6">
-          <MouseIllustration buttonStates={buttonStates} />
-          
-          {/* Quick calibration status card */}
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col gap-3 font-mono text-[11px]">
-            <span className="font-bold text-slate-405 uppercase tracking-widest flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-indigo-400" />
-              Инструкция
-            </span>
-            <p className="text-slate-400 leading-relaxed">
-              *ВНИМАНИЕ: Все клики на этой странице отображаются на векторном макете мыши выше в реальном времени. Нажмите ПКМ на холсте, чтобы протестировать свитч. Встроенное блокирование системных меню включено.
-            </p>
-            <div className="h-[1px] bg-slate-800 my-1" />
-            <div className="space-y-1.5 text-slate-500">
-              <div className="flex justify-between">
-                <span>ЛКМ Дабл-клик:</span>
-                <span className={clickLogs.filter(l => l.button === 'Left' && l.isDoubleClickDefect).length > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
-                  {clickLogs.filter(l => l.button === 'Left' && l.isDoubleClickDefect).length > 0 ? 'Есть сбой' : 'Норма'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>ПКМ Дабл-клик:</span>
-                <span className={clickLogs.filter(l => l.button === 'Right' && l.isDoubleClickDefect).length > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
-                  {clickLogs.filter(l => l.button === 'Right' && l.isDoubleClickDefect).length > 0 ? 'Есть сбой' : 'Норма'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Сбои скролла:</span>
-                <span className={scrollLogs.filter(s => s.isJitter).length > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
-                  {scrollLogs.filter(s => s.isJitter).length > 0 ? 'Обнаружены' : 'Нет'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side Frame - Interactive diagnostic test benches */}
-        <div className="xl:col-span-3 flex flex-col gap-6 bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl">
-          
-          {/* Sub Navigation Bar / Tabs */}
-          <nav className="flex items-center gap-1.5 border-b border-slate-800/80 pb-4 overflow-x-auto scrollbar-none">
-            <button
-              onClick={() => setActiveTab('click')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold leading-none tracking-wide cursor-pointer transition-all ${
-                activeTab === 'click'
-                  ? 'bg-gradient-to-r from-indigo-950/60 to-slate-900 border-b-2 border-indigo-500 text-indigo-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/35'
-              }`}
-            >
-              <Sliders className="w-4 h-4 shrink-0" />
-              <span>Тест Кликов</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('scroll')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold leading-none tracking-wide cursor-pointer transition-all ${
-                activeTab === 'scroll'
-                  ? 'bg-gradient-to-r from-indigo-950/60 to-slate-900 border-b-2 border-indigo-500 text-indigo-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/35'
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4 shrink-0" />
-              <span>Тест Колесика</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('polling')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold leading-none tracking-wide cursor-pointer transition-all ${
-                activeTab === 'polling'
-                  ? 'bg-gradient-to-r from-indigo-950/60 to-slate-900 border-b-2 border-indigo-500 text-indigo-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/35'
-              }`}
-            >
-              <Activity className="w-4 h-4 shrink-0" />
-              <span>Частота Опроса</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('sensor')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold leading-none tracking-wide cursor-pointer transition-all ${
-                activeTab === 'sensor'
-                  ? 'bg-gradient-to-r from-indigo-950/60 to-slate-900 border-b-2 border-indigo-500 text-indigo-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/35'
-              }`}
-            >
-              <PenTool className="w-4 h-4 shrink-0" />
-              <span>Тест Сенсора</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ai')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold leading-none tracking-wide cursor-pointer transition-all ${
-                activeTab === 'ai'
-                  ? 'bg-gradient-to-r from-indigo-950/60 to-slate-900 border-b-2 border-indigo-550 text-indigo-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/35'
-              }`}
-            >
-              <Bot className="w-4 h-4 shrink-0" />
-              <span className="flex items-center gap-1">ИИ Ремонтник <span className="w-2 h-2 bg-indigo-400 rounded-full animate-ping shrink-0" /></span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('handbook')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold leading-none tracking-wide cursor-pointer transition-all ${
-                activeTab === 'handbook'
-                  ? 'bg-gradient-to-r from-indigo-950/60 to-slate-900 border-b-2 border-indigo-500 text-indigo-300'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/35'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 shrink-0" />
-              <span>Инструкции</span>
-            </button>
-          </nav>
-
-          {/* Active Panel Frame container */}
-          <div className="flex-1 min-h-[350px]">
-            {activeTab === 'click' && (
-              <ClickDiagnostics
-                onLogClick={(btn, code) => {
-                  // Capture clicks internally
-                }}
-                clickLogs={clickLogs}
-                setClickLogs={setClickLogs}
-              />
-            )}
-
-            {activeTab === 'scroll' && (
-              <ScrollDiagnostics
-                onScrollAction={(dir) => {
-                  // Captured internally
-                }}
-                scrollLogs={scrollLogs}
-                setScrollLogs={setScrollLogs}
-              />
-            )}
-
-            {activeTab === 'polling' && (
-              <PollingRateDiagnostics />
-            )}
-
-            {activeTab === 'sensor' && (
-              <SensorCanvas />
-            )}
-
-            {activeTab === 'ai' && (
-              <AIAdvisorPanel
-                clickLogs={clickLogs}
-                scrollLogs={scrollLogs}
-                peakPollingRate={peakPolling}
-              />
-            )}
-
-            {activeTab === 'handbook' && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-800">
-                  <Wrench className="w-5 h-5 text-indigo-400" />
-                  <h3 className="text-base font-bold tracking-tight text-slate-200 uppercase">
-                    Инструкции по разбору и ремонту кнопок и скролла
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {PRESET_GUIDES.map((guide) => (
-                    <div
-                      key={guide.id}
-                      className="p-5 bg-slate-950 border border-slate-800 rounded-xl flex flex-col justify-between hover:border-indigo-500/50 hover:bg-slate-950/90 transition-colors duration-250 group/card"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2 header-tag">
-                          <span className="text-[10px] font-mono font-bold uppercase text-indigo-400 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-800/20">
-                            Сложность: {guide.difficulty}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            ID: {guide.id}
-                          </span>
-                        </div>
-
-                        <h4 className="text-sm font-bold text-slate-250 group-hover/card:text-indigo-300 transition-colors mb-1">
-                          {guide.title}
-                        </h4>
-                        <p className="text-[11px] text-rose-350 font-mono mb-3 leading-relaxed bg-rose-500/5 px-2 py-1 rounded border border-rose-500/10">
-                          Симптом: {guide.symptom}
-                        </p>
-
-                        <div className="space-y-1 mb-4 text-[11px] text-slate-400">
-                          <strong className="text-slate-500 text-[10px] block uppercase tracking-wider mb-1">Инструменты:</strong>
-                          <div className="flex flex-wrap gap-1">
-                            {guide.toolsRequired.map((tool, tIdx) => (
-                              <span key={tIdx} className="bg-slate-900 border border-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">
-                                {tool}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 text-[11px] border-t border-slate-900 pt-3">
-                          <strong className="text-slate-500 text-[10px] block uppercase tracking-wider mb-1">Шаги починки:</strong>
-                          {guide.steps.slice(0, 4).map((step, sIdx) => (
-                            <div key={sIdx} className="flex gap-1.5 leading-relaxed text-slate-400">
-                              <span className="text-indigo-400 font-bold">{sIdx + 1}.</span>
-                              <span>{step}</span>
-                            </div>
-                          ))}
-                          {guide.steps.length > 4 && (
-                            <p className="text-[10px] font-mono text-slate-600 italic">
-                              и еще {guide.steps.length - 4} шагов... Откройте ИИ-Консультанта для полной статьи
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      {/* Laboratory general Footer */}
-      <footer className="bg-slate-950 border-t border-slate-900 px-6 py-4 mt-12 text-center text-[11px] font-mono text-slate-600 flex flex-col md:flex-row items-center justify-between gap-2 relative z-10">
-        <div>
-          <span>© 2026 Mouse Diagnostics Lab (Диагностическая Лаборатория Мышек).</span>
-        </div>
-        <div className="flex gap-4">
-          <span>Разработано для OTG Подключений & ПК Сенсоров</span>
-          <span>•</span>
-          <span className="text-indigo-400 font-bold">UTC: 2026-06-08</span>
-        </div>
-      </footer>
-    </div>
-  );
+        <p className="muted">Условия фиксируются после первого события. Для другого сценария начните новую сессию.</p>
+      </>}
+      <div hidden={tab!=='sensor'}><h2>Рисование траектории</h2><p>Визуальная проверка в CSS-пикселях. Не измеряет DPI или точность сенсора в миллиметрах.</p><SensorCanvas/></div>
+      {tab==='guides'&&<><h2>Справочник проверок</h2><p>Возможные причины требуют подтверждения. Не разбирайте подключённое устройство.</p>{PRESET_GUIDES.map(guide=><details key={guide.id}><summary>{guide.title}</summary><p>{guide.symptom}</p><p>Возможные причины: {guide.causes.join('; ')}.</p><ol>{guide.steps.map(step=><li key={step}>{step}</li>)}</ol></details>)}</>}
+      {tab==='report'&&<section className="print-report"><h2>Отчёт сессии</h2><p>{device||'Устройство не указано'} · {new Date(session.startedAt).toLocaleString('ru-RU')}</p><p className="mono">ID {session.id}</p><p>Результат: {view.conclusion==='not-measured'?'не измерено':view.conclusion==='suspicion'?'есть подозрительные события, нужна повторная проверка':'наблюдения получены; исправность не подтверждена автоматически'}</p><label>Комментарий мастера<textarea maxLength={2000} value={comment} onChange={e=>setComment(e.target.value)}/></label><div className="actions no-print"><button onClick={save}>Сохранить сессию</button><button onClick={download}>Экспорт JSON</button><button onClick={()=>window.print()}>Печать / PDF</button><label className="file-action">Сравнить с JSON<input type="file" accept=".json,application/json" onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;try{if(file.size>524288)throw new Error('Файл больше 512 КБ');setBaseline(parseReport(await file.text()));setNotice('Файл открыт для сравнения; текущая сессия сохранена.');}catch(error){setNotice((error as Error).message);}}}/></label></div>
+        {baseline&&<><h3>До / после</h3><p>{baseline.device||'Устройство не указано'} → {device||'Устройство не указано'}</p><p>{JSON.stringify(baseline.conditions)===JSON.stringify(view.conditions)&&baseline.source===view.source&&baseline.device===device?'Условия совпадают по сохранённым полям.':'Условия, источник или название устройства отличаются: прямое сравнение ограничено.'}</p><table><thead><tr><th>Наблюдение</th><th>До</th><th>Сейчас</th></tr></thead><tbody><tr><td>Нажатия</td><td>{baseline.summary.totalClicks}</td><td>{measured.totalClicks}</td></tr><tr><td>Подозрения на повтор</td><td>{baseline.summary.suspectedBounce}</td><td>{measured.suspectedBounce}</td></tr><tr><td>События, Гц</td><td>{format(baseline.summary.eventRateHz)}</td><td>{format(measured.eventRateHz)}</td></tr></tbody></table></>}
+        <h3>Условия и ограничения</h3><p>Ввод: {view.conditions.input}; сценарий кликов: {view.conditions.clickMode}; порог: {view.conditions.bounceThresholdMs} мс; колесо: {view.conditions.scrollMode}. Источник: {view.source}. Уверенность: только наблюдения браузера; физический диагноз не установлен.</p><p>Объём: {measured.pointerEvents} событий движения, {measured.totalClicks} нажатий. В экспорт входят последние 512 наблюдений; суммарные счётчики не обрезаются. Таймеры, обработка ОС и браузер влияют на результат.</p><p className="mono">{navigator.userAgent}</p>
+        <h3 className="no-print">История на этом устройстве</h3><div className="history no-print">{history.length?history.map(row=><button key={row.session_id} onClick={()=>setBaseline(row)}>{new Date(row.started_at).toLocaleString('ru-RU')} · {row.device||'Без названия'}</button>):<p>Сохранённых сессий пока нет.</p>}</div></section>}
+      <div hidden={tab!=='ai'}><AIAdvisor report={report()}/></div>
+      </section>
+      <aside className="measurements" aria-label="Измерения сессии"><p className="eyebrow">ТЕКУЩАЯ СЕССИЯ</p><h2>Наблюдения</h2><dl><div><dt>Нажатия за всю сессию</dt><dd>{measured.totalClicks}</dd></div><div><dt>Подозрения на повтор</dt><dd>{measured.suspectedBounce}</dd></div><div><dt>Короткие обратные шаги</dt><dd>{measured.scrollReversals}</dd></div><div><dt>Среднее удержание</dt><dd>{format(measured.meanHoldMs,' мс')}</dd></div><div><dt>Частота событий браузера</dt><dd>{format(measured.eventRateHz,' Гц')}</dd></div><div><dt>Пик окна ≥ 500 мс</dt><dd>{format(measured.peakEventRateHz,' Гц')}</dd></div></dl><p className="muted">Источник: {view.source}. Событий движения: {measured.pointerEvents}. Нет данных — не означает «исправно».</p><details><summary>Последние события ({Math.min(20,view.observations.length)})</summary><ol className="event-log">{view.observations.slice(-20).reverse().map((event,index)=><li key={index}>{event.kind} · {event.t.toFixed(1)} мс · {event.values.map(value=>value.toFixed(1)).join(', ')}</li>)}</ol></details></aside>
+    </main><footer>Измерения, история и отчёты работают без ИИ и без отправки данных. Перед закрытием вкладки сохраните сессию. После загрузки страницы измерения работают без сети.</footer>
+  </div>;
 }
