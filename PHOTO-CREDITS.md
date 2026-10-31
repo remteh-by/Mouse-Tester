@@ -4,4 +4,4 @@ Original unbranded RemTeh mouse illustration generated with the built-in imagege
 
 Official white RemTeh logo: unchanged existing brand asset from [remteh.by](https://remteh.by/images/logo_white.png), used on the mouse at the owner request. It is rendered as an exact overlay, not redrawn or AI-generated.
 
-Version 1.2.2 uses the unchanged logo alpha for a CSS engraving material. Left-side button details and arrows are UI overlays; they do not identify a connected mouse model.
+Version 1.3.0 uses the unchanged logo alpha for a CSS engraving material. Left-side button masks follow the original illustration; arrows are UI overlays. They they do not identify a connected mouse model.

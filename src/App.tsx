@@ -5,6 +5,7 @@ import {MouseSession,parseReport,type Report,type Conditions} from './diagnostic
 import SensorCanvas from './components/SensorCanvas';
 import {PRESET_GUIDES} from './data/guides';
 import AIAdvisor from './components/AIAdvisor';
+import OfflineStatus from './components/OfflineStatus';
 import {Mouse,RotateCw,Move,Pencil,FileText,BookOpen,Sparkles} from 'lucide-react';
 const icons={buttons:Mouse,wheel:RotateCw,movement:Move,sensor:Pencil,report:FileText,guides:BookOpen,ai:Sparkles};
 const mousePhoto=new URL('../public/devices/remteh-mouse.webp',import.meta.url).href;
@@ -17,15 +18,22 @@ const scrollLabels={free:'свободная прокрутка',up:'тольк�
 const format=(value:number|null,suffix='')=>value===null?'Не измерено':value.toLocaleString('ru-RU',{maximumFractionDigits:1})+suffix;
 const tabs=[['buttons','Кнопки'],['wheel','Колесо'],['movement','Движение'],['sensor','Рисование'],['report','Отчёт'],['guides','Справочник'],['ai','ИИ-помощник']] as const;
 const tabFromHash=()=>tabs.find(([id])=>id===window.location.hash.slice(1))?.[0]??'buttons';
+const checkpointKey='remteh-mouse-checkpoint-v1';
+const tabCheckpointKey='remteh-mouse-tab-checkpoint-v1';
+function initialSession(){for(const scope of ['tab','local'] as const)try{const storage=scope==='tab'?sessionStorage:localStorage,text=storage.getItem(scope==='tab'?tabCheckpointKey:checkpointKey);if(text){const restored=MouseSession.restore(text);return {...restored,restored:true,checkpointText:text,checkpointScope:scope};}}catch{/* Keep the independently saved history available. */}return {session:new MouseSession(),report:null,restored:false,checkpointText:null,checkpointScope:null};}
 export default function App(){
-  const [session,setSession]=useState(()=>new MouseSession());
+  const [initial]=useState(initialSession);
+  const [session,setSession]=useState(()=>initial.session);
   const [tab,setTab]=useState<string>(tabFromHash),[view,setView]=useState(()=>session.report());
-  const [device,setDevice]=useState(''),[comment,setComment]=useState(''),[baseline,setBaseline]=useState<Report|null>(null);
-  const [notice,setNotice]=useState(''),[history,setHistory]=useState<Report[]>([]),[sound,setSound]=useState(false);
+  const [device,setDevice]=useState(initial.report?.device??''),[comment,setComment]=useState(initial.report?.comment??''),[baseline,setBaseline]=useState<Report|null>(null);
+  const [notice,setNotice]=useState(initial.restored?'Сессия восстановлена. Зажатые кнопки отпущены; измерения можно продолжить.':''),[history,setHistory]=useState<Report[]>([]),[sound,setSound]=useState(false);
   const panel=useRef<HTMLDivElement>(null),audio=useRef<AudioContext|null>(null),lastSound=useRef(0),pointerType=useRef('mouse');
   const [pressed,setPressed]=useState<number[]>([]),[supportReady,setSupportReady]=useState(false);
-  const report=()=>session.report(device,comment,baseline?.session_id??null);
-  const chooseTab=(id:string)=>{setTab(id);window.history.pushState(null,'','#'+id);};
+  const previousSessionId=baseline?.session_id??(session.id===initial.session.id?initial.report?.previous_session_id??null:null);
+  const report=()=>session.report(device,comment,previousSessionId);
+  useEffect(()=>{if(initial.restored)try{const storage=initial.checkpointScope==='tab'?sessionStorage:localStorage,key=initial.checkpointScope==='tab'?tabCheckpointKey:checkpointKey;if(storage.getItem(key)===initial.checkpointText)storage.removeItem(key);const local=localStorage.getItem(checkpointKey);if(local&&JSON.parse(local)?.report?.session_id===initial.session.id)localStorage.removeItem(checkpointKey);}catch{/* Recovery remains usable when storage becomes unavailable. */}},[initial]);
+  const chooseTab=(id:string)=>{setTab(id);if(location.hash!=='#'+id)window.history.pushState(null,'','#'+id);};
+  useEffect(()=>{let savedEvents=-1;const draft=()=>session.checkpoint(device,comment,previousSessionId);const preserve=()=>{const text=draft();for(const [storage,key] of [[sessionStorage,tabCheckpointKey],[localStorage,checkpointKey]] as const)try{storage.setItem(key,text);}catch{/* Explicit save/export reports storage failures. */}};const timer=setInterval(()=>{if(savedEvents===session.totalEvents)return;try{sessionStorage.setItem(tabCheckpointKey,draft());savedEvents=session.totalEvents;}catch{/* The live session and manual export remain available. */}},2000);window.addEventListener('pagehide',preserve);return()=>{clearInterval(timer);window.removeEventListener('pagehide',preserve);};},[session,device,comment,previousSessionId]);
   useEffect(()=>{const sync=()=>setTab(tabFromHash());window.addEventListener('hashchange',sync);window.addEventListener('popstate',sync);return()=>{window.removeEventListener('hashchange',sync);window.removeEventListener('popstate',sync);};},[]);
   useEffect(()=>{try{const stored=localStorage.getItem('remteh-mouse-history-v1');if(stored&&stored.length<5*1024*1024){const rows=JSON.parse(stored);if(Array.isArray(rows))setHistory(rows.slice(0,20).map(row=>parseReport(JSON.stringify(row))));}}catch{setNotice('Локальная история недоступна. Экспорт JSON продолжает работать.');}},[]);
   useEffect(()=>{
@@ -49,12 +57,13 @@ export default function App(){
     return()=>{element.removeEventListener(source,move as EventListener);element.removeEventListener('wheel',wheel);window.removeEventListener('mouseup',release);session.pause();setPressed([]);};
   },[session,tab]);
   function tick(){if(!sound||performance.now()-lastSound.current<100)return;lastSound.current=performance.now();try{const context=audio.current??(audio.current=new AudioContext());void context.resume();const oscillator=context.createOscillator(),gain=context.createGain();gain.gain.value=.02;oscillator.frequency.value=600;oscillator.connect(gain);gain.connect(context.destination);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();};oscillator.start();oscillator.stop(context.currentTime+.025);}catch{setNotice('Звук недоступен; измерения продолжаются.');}}
-  function save(){try{const current=report(),rows=[current,...history.filter(row=>row.session_id!==current.session_id)].slice(0,20);localStorage.setItem('remteh-mouse-history-v1',JSON.stringify(rows));setHistory(rows);setSupportReady(true);setNotice('Сессия сохранена только в этом браузере.');return true;}catch{setNotice('Не удалось сохранить историю. Текущая сессия остаётся открытой; экспортируйте JSON.');return false;}}
+  function save(){try{const current=report(),stored=localStorage.getItem('remteh-mouse-history-v1');const fresh=stored?JSON.parse(stored):history;if(!Array.isArray(fresh)||fresh.length>20)throw new Error('Неверная история');const rows=[current,...fresh.map(row=>parseReport(JSON.stringify(row))).filter(row=>row.session_id!==current.session_id)].slice(0,20);localStorage.setItem('remteh-mouse-history-v1',JSON.stringify(rows));setHistory(rows);setSupportReady(true);setNotice('Сессия сохранена только в этом браузере.');return true;}catch{setNotice('Не удалось сохранить историю. Текущая сессия остаётся открытой; экспортируйте JSON.');return false;}}
   function download(){const blob=new Blob([JSON.stringify(report(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='remteh-mouse-'+session.id+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   function conditions(change:Partial<Conditions>){if(session.totalEvents)return;session.conditions={...session.conditions,...change};setView(session.report());}
   const measured=view.summary,locked=session.totalEvents>0;
   return <div className="lab-shell">
-    <div className="lab-topbar"><header className="lab-header"><div><h1>Mouse Tester <span className="version" aria-hidden="true">1.2.2</span></h1><p>Проверьте мышь. Сохраните результат.</p></div><SupportPanel compact/></header>
+    <div className="lab-topbar"><header className="lab-header"><div><h1>Mouse Tester <span className="version" aria-hidden="true">1.3.0</span></h1><p>Проверьте мышь. Сохраните результат.</p></div><SupportPanel compact/></header>
+    <OfflineStatus beforeUpdate={()=>{if(!save())return false;try{sessionStorage.setItem(tabCheckpointKey,session.checkpoint(device,comment,previousSessionId));return true;}catch{setNotice('Не удалось сохранить текущий замер. Экспортируйте JSON перед обновлением.');return false;}}}/>
     <div className="session-bar"><label>Устройство<input value={device} maxLength={160} placeholder="Модель вашей мыши, если известна" onChange={e=>setDevice(e.target.value)}/></label><label>Источник ввода<select disabled={locked} value={view.conditions.input} onChange={e=>conditions({input:e.target.value as Conditions['input']})}><option value="unknown">Не указан</option><option value="mouse">Мышь</option><option value="trackpad">Трекпад</option></select></label><button onClick={()=>{if(!save())return;const next=new MouseSession();setSession(next);setView(next.report());setComment('');setNotice('Предыдущая сессия сохранена. Начата новая.');}}>Новая сессия</button><label className="check"><input type="checkbox" checked={sound} onChange={e=>setSound(e.target.checked)}/>Звук нажатия</label></div>
     </div><nav className="tabs" aria-label="Проверки">{tabs.map(([id,title])=>{const Icon=icons[id];return <button key={id} aria-current={tab===id?'page':undefined} onClick={()=>chooseTab(id)}><Icon size={19} aria-hidden="true"/>{title}</button>})}</nav>
     <p role="status" className="notice">{notice}</p>
@@ -79,6 +88,6 @@ export default function App(){
       <div hidden={tab!=='ai'}><AIAdvisor report={report()}/></div>
       </section>
       <aside className="measurements" aria-label="Измерения сессии"><h2>Текущие измерения</h2><dl><div><dt>Нажатия за всю сессию</dt><dd>{measured.totalClicks}</dd></div><div><dt>Подозрения на повтор</dt><dd>{measured.suspectedBounce}</dd></div><div><dt>Короткие обратные шаги</dt><dd>{measured.scrollReversals}</dd></div><div><dt>Среднее удержание</dt><dd>{format(measured.meanHoldMs,' мс')}</dd></div><div><dt>Частота событий браузера</dt><dd>{format(measured.eventRateHz,' Гц')}</dd></div><div><dt>Пик окна ≥ 500 мс</dt><dd>{format(measured.peakEventRateHz,' Гц')}</dd></div></dl><button className="report-shortcut" onClick={()=>{if(save())chooseTab('report');}}>Сохранить и открыть отчёт →</button><p className="muted">Источник: {sourceLabels[view.source]}. Событий движения: {measured.pointerEvents}. Нет данных — не означает «исправно».</p><details><summary>Последние события ({Math.min(20,view.observations.length)})</summary><ol className="event-log">{view.observations.slice(-20).reverse().map((event,index)=><li key={index}>{event.kind} · {event.t.toFixed(1)} мс · {event.values.map(value=>value.toFixed(1)).join(', ')}</li>)}</ol></details></aside>
-    </main><footer><p>RemTeh · Mouse Tester 1.2.2</p>Измерения, история и отчёты работают без ИИ и без отправки данных. Перед закрытием вкладки сохраните сессию. После загрузки страницы измерения работают без сети.<details><summary>Изображение и ограничения</summary><p>Уникальная иллюстрация мыши RemTeh без фона. Подсветка отражает нажатия, полученные браузером. Модель устройства автоматически не определяется.</p></details></footer>
+    </main><footer><p>RemTeh · Mouse Tester 1.3.0</p>Измерения, история и отчёты работают без ИИ и без отправки данных. Автономная вебверсия запускается без сети после подготовки копии. Текущая сессия сохраняется локально при закрытии окна.<details><summary>Изображение и ограничения</summary><p>Уникальная иллюстрация мыши RemTeh без фона. Подсветка отражает нажатия, полученные браузером. Модель устройства автоматически не определяется.</p></details></footer>
   </div>;
 }

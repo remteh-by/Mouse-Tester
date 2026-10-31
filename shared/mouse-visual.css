@@ -10,27 +10,21 @@ img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-
 .layer.left{transform-origin:32% 41%}
 .layer.right{transform-origin:68% 41%}
 .layer.wheel.on{transform:translateY(.25%);filter:brightness(.86) drop-shadow(0 -1px .5px #0009)}
-.layer.back.on,.layer.forward.on{transform:translateX(1.4%) scaleX(.95);transform-origin:20% 50%}
+.layer.back.on,.layer.forward.on{transform:translateX(.75%);filter:brightness(.74) drop-shadow(-1px 0 .5px #0009);transform-origin:20% 50%}
 .left{--clip:polygon(45.4% 7%,44.6% 38.8%,22.2% 44.1%,20.4% 43.9%,19.2% 42.7%,18.7% 40.9%,19.2% 23%,20.8% 17.7%,23.8% 13%,30.5% 9.8%,38.4% 7.6%)}
 .right{--clip:polygon(54.3% 7.2%,62.8% 8%,72.8% 10.4%,79.2% 14.9%,81.2% 19.7%,82.4% 40.9%,81.9% 42.5%,80.7% 43.8%,78.4% 44.2%,55.7% 39%,54.8% 37.9%)}
 .wheel{--clip:polygon(48% 16.1%,52% 16.1%,53.1% 17.5%,53.2% 28.5%,52% 29.5%,48% 29.5%,46.8% 28.4%,46.8% 17.5%)}
-.back{--clip:polygon(14% 46%,19% 46%,19% 59%,14% 59%)}
-.forward{--clip:polygon(14% 32%,19% 32%,19% 46%,14% 46%)}
+.back{--clip:polygon(16.2% 46.2%,17.5% 46.1%,18.6% 47.3%,19.3% 56.7%,18.7% 58.3%,17.5% 58.6%,16% 57.2%,15.4% 47.8%)}
+.forward{--clip:polygon(15.4% 34.1%,16.7% 34.6%,17.5% 43.9%,17.1% 45%,15.5% 44.7%,14.4% 43.4%,14.1% 35%)}
 .brand-engraving{position:absolute;z-index:3;left:50%;top:65%;width:44%;aspect-ratio:161/38;transform:translateX(-50%)}
 img.brand{inset:0;width:100%;height:100%;filter:brightness(.45) drop-shadow(0 -1px .35px #05070be6) drop-shadow(0 1px .35px #c6d0d366)}
 .brand-sheen{position:absolute;inset:0;mask-image:linear-gradient(115deg,transparent 28%,#fff5 41%,#fff 50%,#fff5 59%,transparent 72%);-webkit-mask-image:linear-gradient(115deg,transparent 28%,#fff5 41%,#fff 50%,#fff5 59%,transparent 72%);mask-size:260% 100%;-webkit-mask-size:260% 100%;filter:brightness(.95) drop-shadow(0 -1px .25px #0009);opacity:.6;animation:engraving-sheen 7s ease-in-out infinite}
 @keyframes engraving-sheen{0%,100%{mask-position:100% 50%;-webkit-mask-position:100% 50%}50%{mask-position:0% 50%;-webkit-mask-position:0% 50%}}
-.side-key{position:absolute;z-index:4;left:13.8%;width:6.2%;height:11.5%;border-radius:65% 30% 28% 60% / 20% 12% 12% 20%;background:#0a0d10;box-shadow:inset -1px 0 2px #000,0 0 1px #000b;transform:skewY(-7deg)}
-.side-key.forward{top:32%}
-.side-key.back{top:46%}
-.side-cap{position:absolute;inset:1px 1px 1px 2px;border:1px solid #69707755;border-radius:inherit;background:linear-gradient(90deg,#24292e,#424950 40%,#343b41 72%,#20272d);box-shadow:inset 1px 0 1px #abb5bf26,-1px 1px 2px #0009;transform:none;transform-origin:100% 50%;transition:transform 80ms ease,filter 80ms ease}
-.side-cap::after{content:"";position:absolute;inset:0;border-radius:inherit;background:repeating-linear-gradient(100deg,transparent 0 1px,#ffffff08 1px 2px);opacity:.5}
-.side-key.on .side-cap{transform:translateX(2px) scaleX(.76);filter:brightness(.68);box-shadow:inset -1px 0 3px #000b,0 0 1px #000}
-.side-title,.side-label{position:absolute;left:-30%;white-space:nowrap;color:#aeb9c1;font:10px/1.2 Arial,sans-serif;letter-spacing:.01em}
-.side-title{top:27%;color:#8e9ba5;font-size:9px}
-.side-label.forward{top:36.5%}
+.side-title,.side-label{position:absolute;left:-30%;white-space:nowrap;color:var(--mouse-label,#aeb9c1);font:10px/1.2 Arial,sans-serif;letter-spacing:.01em}
+.side-title{top:27%;color:var(--mouse-label-muted,#8e9ba5);font-size:9px}
+.side-label.forward{top:37.7%}
 .side-label.back{top:50.5%}
-.side-label.on{color:#fff;font-weight:700;text-shadow:0 1px 2px #000}
+.side-label.on{color:var(--mouse-label-active,#fff);font-weight:700;text-shadow:var(--mouse-label-shadow,0 1px 2px #000)}
 .wheel-arrow,.press-arrow{position:absolute;left:50%;z-index:4;display:grid;place-items:center;width:24px;height:24px;color:#fff;font:700 25px/1 Arial,sans-serif;text-shadow:0 1px 3px #000,0 -1px 2px #000;opacity:0;transform:translateX(-50%) scale(.8);transition:opacity 65ms ease,transform 85ms ease}
 .wheel-arrow.up{top:6.5%}
 .wheel-arrow.down{top:31%}
@@ -41,6 +35,6 @@ img.brand{inset:0;width:100%;height:100%;filter:brightness(.45) drop-shadow(0 -1
 .press-arrow.main-right{left:68%;top:1%}
 .press-arrow.middle{left:50%;top:6.5%}
 :host([scroll-direction]) .press-arrow.middle{opacity:0}
-.press-arrow.side-forward{left:5%;top:34%}
-.press-arrow.side-back{left:5%;top:48%}
-@media(prefers-reduced-motion:reduce){.layer,.press-well,.wheel-arrow,.press-arrow,.side-cap{transition:none}.brand-sheen{animation:none;mask-position:50% 50%;-webkit-mask-position:50% 50%}}
+.press-arrow.side-forward{left:5%;top:35.8%}
+.press-arrow.side-back{left:5%;top:48.7%}
+@media(prefers-reduced-motion:reduce){.layer,.press-well,.wheel-arrow,.press-arrow{transition:none}.brand-sheen{animation:none;mask-position:50% 50%;-webkit-mask-position:50% 50%}}
