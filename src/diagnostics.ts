@@ -12,16 +12,36 @@ export interface Report {
 }
 const finite=(value:unknown):value is number=>typeof value==='number' && Number.isFinite(value);
 export class MouseSession {
-  readonly id=crypto.randomUUID(); readonly startedAt=new Date().toISOString(); readonly start=performance.now();
+  readonly id:string; readonly startedAt:string; readonly start=performance.now();
+  private elapsedBefore=0;
   conditions:Conditions={input:'unknown',clickMode:'free',bounceThresholdMs:60,scrollMode:'free'};
   source:EventSource='not-measured'; events:Observation[]=[]; totalEvents=0;
   private downs=new Map<number,number>(); private releases=new Map<number,number>();
   private lastPointer:number|null=null; private lastSample=''; private pointerWindow:number[]=[];
   private intervalSum=0; private intervals=0; private holdSum=0; private lastWheel:number|null=null;
   summary:Summary={totalClicks:0,suspectedBounce:0,scrollReversals:0,pointerEvents:0,eventRateHz:null,peakEventRateHz:null,completedHolds:0,meanHoldMs:null};
+  constructor(saved?:{report:Report;totalEvents:number;intervalSum:number;intervals:number;holdSum:number}) {
+    this.id=saved?.report.session_id??crypto.randomUUID();this.startedAt=saved?.report.started_at??new Date().toISOString();
+    if(saved){this.elapsedBefore=saved.report.duration_ms;this.conditions={...saved.report.conditions};this.source=saved.report.source;
+      this.events=saved.report.observations.map(row=>({...row,values:[...row.values]}));this.summary={...saved.report.summary};
+      this.totalEvents=saved.totalEvents;this.intervalSum=saved.intervalSum;this.intervals=saved.intervals;this.holdSum=saved.holdSum;}
+  }
+  checkpoint(device='',comment='',previous:string|null=null) {
+    return JSON.stringify({schema:1,kind:'mouse-checkpoint',report:this.report(device,comment,previous),totalEvents:this.totalEvents,intervalSum:this.intervalSum,intervals:this.intervals,holdSum:this.holdSum});
+  }
+  static restore(text:string) {
+    if(new TextEncoder().encode(text).length>524288)throw new Error('Сохранённая сессия слишком велика');
+    const value=JSON.parse(text);
+    if(value?.schema!==1||value.kind!=='mouse-checkpoint')throw new Error('Неверный формат сохранённой сессии');
+    const report=parseReport(JSON.stringify(value.report));
+    for(const key of ['totalEvents','intervals'])if(!Number.isSafeInteger(value[key])||value[key]<0||value[key]>1e12)throw new Error('Повреждены счётчики сессии');
+    for(const key of ['intervalSum','holdSum'])if(!finite(value[key])||value[key]<0||value[key]>1e16)throw new Error('Повреждены измерения сессии');
+    if(value.totalEvents<report.observations.length||value.totalEvents<report.summary.totalClicks||value.intervals>report.summary.pointerEvents)throw new Error('Несогласованная сессия');
+    return {session:new MouseSession({...value,report}),report};
+  }
   record(kind:string,t:number,values:number[]) {
     if(!finite(t)||values.some(value=>!finite(value))) return;
-    this.events.push({kind,t:Math.max(0,t-this.start),values}); this.totalEvents++;
+    this.events.push({kind,t:this.elapsedBefore+Math.max(0,t-this.start),values}); this.totalEvents++;
     if(this.events.length>512) this.events.shift();
   }
   down(button:number,t:number) {
@@ -62,8 +82,8 @@ export class MouseSession {
   }
   pause(){this.downs.clear();this.releases.clear();this.lastPointer=null;this.lastWheel=null;this.pointerWindow=[];this.lastSample='';}
   report(device='',comment='',previous:string|null=null):Report {
-    return {schema:1,kind:'mouse',session_id:this.id,application:'RemTeh Mouse Tester',version:'1.2.2',
-      started_at:this.startedAt,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,duration_ms:Math.max(0,performance.now()-this.start),
+    return {schema:1,kind:'mouse',session_id:this.id,application:'RemTeh Mouse Tester',version:'1.3.0',
+      started_at:this.startedAt,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,duration_ms:this.elapsedBefore+Math.max(0,performance.now()-this.start),
       environment:typeof navigator==='undefined'?'test':navigator.userAgent,device:device.slice(0,160),source:this.source,
       transport:'browser-not-reported',conditions:{...this.conditions},observations:this.events.map(event=>({...event,values:[...event.values]})),
       summary:{...this.summary},trace_truncated:this.totalEvents>this.events.length,comment:comment.slice(0,2000),previous_session_id:previous,

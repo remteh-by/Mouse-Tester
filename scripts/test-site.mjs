@@ -122,9 +122,9 @@ try {
     try {
       await cdp.send('Input.dispatchMouseEvent',{type:'mousePressed',button,buttons:button==='back'?8:16,clickCount:1,...point});
       await page.waitForFunction(index=>document.querySelector('remteh-mouse').getAttribute('pressed').split(',').includes(String(index)),index);
-      const cap=page.locator('remteh-mouse .side-key.'+button+'.on .side-cap');
+      const cap=page.locator('remteh-mouse .layer.'+button+'.on');
       await cap.evaluate(element=>Promise.all(element.getAnimations().map(animation=>animation.finished)));
-      assert.notEqual(await cap.evaluate(element=>getComputedStyle(element).transform),'none');
+      const movement=await cap.evaluate(element=>{const matrix=new DOMMatrix(getComputedStyle(element).transform);return {x:matrix.e,scaleX:matrix.a,scaleY:matrix.d};});assert(movement.x>0);assert.equal(movement.scaleX,1);assert.equal(movement.scaleY,1);assert.equal(await page.locator('remteh-mouse .side-key').count(),0);
       assert.equal(await page.locator('remteh-mouse .press-arrow.side-'+button+'.on').count(),1);
       await page.locator('remteh-mouse').screenshot({path:path.join(out,'mouse-close-'+button+'.png')});
     } finally {await cdp.send('Input.dispatchMouseEvent',{type:'mouseReleased',button,buttons:0,clickCount:1,...point});}
