@@ -38,12 +38,13 @@ try {
   page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
   page.on('request',request=>{if(new URL(request.url()).pathname.includes('/api/'))api.push(request.url());});
   page.on('response',response=>{if(response.status()>=400)failed.push({url:response.url(),status:response.status()});});
-  let imageURL;
+  let imageURL,logoURL;
   for(const width of [390,1920,2560,3840]) {
     await page.setViewportSize({width,height:1000});
     await page.goto(base,{waitUntil:'networkidle'});
     await page.getByRole('heading',{name:'Mouse Tester',exact:true}).waitFor();
     await page.locator('remteh-mouse img.base').evaluate(image=>image.decode());
+    await page.locator('remteh-mouse img.brand').evaluate(image=>image.decode());
     const state=await page.evaluate(()=>{
       const mouse=document.querySelector('remteh-mouse');
       const image=mouse.shadowRoot.querySelector('img.base');
@@ -51,12 +52,13 @@ try {
         shellWidth:document.querySelector('.lab-shell').getBoundingClientRect().width,
         indicatorOverflow:[...document.querySelectorAll('.button-indicators span')].some(node=>node.scrollWidth>node.clientWidth),
         imageURL:image.currentSrc,imageWidth:image.naturalWidth,
+        logoURL:mouse.shadowRoot.querySelector('img.brand').currentSrc,logoWidth:mouse.shadowRoot.querySelector('img.brand').naturalWidth,
         policy:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]')};
     });
-    assert.equal(state.overflow,false);assert.equal(state.indicatorOverflow,false);assert.equal(state.imageWidth,800);assert(state.policy);
+    assert.equal(state.overflow,false);assert.equal(state.indicatorOverflow,false);assert.equal(state.imageWidth,800);assert.equal(state.logoWidth,161);assert(state.policy);
     if(width>=1920)assert(state.shellWidth>width*.9);
     assert(new URL(state.imageURL).pathname.startsWith(prefix));
-    imageURL=state.imageURL;
+    imageURL=state.imageURL;logoURL=state.logoURL;
     if(width===390||width===1920)await page.screenshot({path:path.join(out,'mouse-site-'+width+'.png'),fullPage:true});
     results.push(state);
   }
@@ -64,20 +66,38 @@ try {
   const hash=data=>createHash('sha256').update(data).digest('hex');
   const expected=hash(fs.readFileSync(path.join(root,'public/devices/remteh-mouse.webp')));
   assert.equal(hash(await image.body()),expected);
+  const logo=await page.request.get(logoURL);assert.equal(logo.status(),200);
+  assert.equal(hash(await logo.body()),hash(fs.readFileSync(path.join(root,'shared/remteh-logo-white.png'))));
   await page.setViewportSize({width:1440,height:1000});
   await page.getByLabel('Источник ввода').selectOption('mouse');
   const pad=page.getByRole('region',{name:'Панель измерений'});
   await pad.hover();
+  await page.locator('remteh-mouse').screenshot({path:path.join(out,'mouse-close-rest.png')});
   try {
     await page.mouse.down({button:'left'});await page.mouse.down({button:'right'});
     await page.waitForFunction(()=>[...document.querySelector('remteh-mouse').shadowRoot.querySelectorAll('.layer.on')].length===2);
-    await page.waitForFunction(()=>getComputedStyle(document.querySelector('remteh-mouse').shadowRoot.querySelector('.layer.left')).opacity==='1');
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('remteh-mouse').shadowRoot.querySelector('.layer.left')).transform!=='none');
+    await page.locator('remteh-mouse .layer.left').evaluate(element=>Promise.all(element.getAnimations().map(animation=>animation.finished)));
+    const pressedStyle=await page.locator('remteh-mouse .layer.left').evaluate(element=>({transform:getComputedStyle(element).transform,filter:getComputedStyle(element).filter}));
+    assert.notEqual(pressedStyle.transform,'none');assert(!/hue-rotate|sepia/.test(pressedStyle.filter));
+    assert.equal(await page.locator('remteh-mouse .press-well.on').count(),2);
+    const activeColors=await page.locator('[data-pressed="true"]').evaluateAll(elements=>elements.map(element=>getComputedStyle(element).backgroundColor.match(/[0-9.]+/g).slice(0,3).map(Number)));
+    assert(activeColors.every(rgb=>Math.max(...rgb)-Math.min(...rgb)<32));
     assert.equal(await page.locator('[data-pressed="true"]').count(),2);
     await page.screenshot({path:path.join(out,'mouse-site-pressed.png'),fullPage:true});
+    await page.locator('remteh-mouse').screenshot({path:path.join(out,'mouse-close-pressed.png')});
   } finally {await page.mouse.up({button:'right'});await page.mouse.up({button:'left'});}
   await page.waitForFunction(()=>document.querySelector('remteh-mouse').shadowRoot.querySelectorAll('.layer.on').length===0);
-  await page.getByRole('button',{name:'Колесо',exact:true}).click();await pad.hover();await page.mouse.wheel(0,120);
-  await page.waitForFunction(()=>document.querySelector('remteh-mouse').shadowRoot.querySelector('.wheel-signal').classList.contains('on'));
+  await page.getByRole('button',{name:'Колесо',exact:true}).click();await pad.hover();
+  for(const [delta,direction,other] of [[-120,'up','down'],[120,'down','up']]){
+    await page.mouse.wheel(0,delta);
+    await page.waitForFunction(direction=>document.querySelector('remteh-mouse').getAttribute('scroll-direction')===direction,direction);
+    assert.equal(await page.locator('remteh-mouse .wheel-arrow.'+other+'.on').count(),0);
+    await page.locator('remteh-mouse .wheel-arrow.'+direction).evaluate(element=>Promise.all(element.getAnimations().map(animation=>animation.finished)));
+    await page.screenshot({path:path.join(out,'mouse-site-wheel-'+direction+'.png'),fullPage:true});
+    await page.locator('remteh-mouse').screenshot({path:path.join(out,'mouse-close-wheel-'+direction+'.png')});
+  }
+  await page.waitForFunction(()=>!document.querySelector('remteh-mouse').hasAttribute('scroll-direction'));
   await page.getByRole('button',{name:'ИИ-помощник',exact:true}).click();
   await page.getByText('В онлайн-версии ИИ-помощник не подключён.',{exact:false}).waitFor();
   assert.equal(await page.getByLabel('Код доступа оператора').count(),0);
@@ -89,7 +109,7 @@ try {
   assert.equal(JSON.parse(fs.readFileSync(path.join(out,'site-session.json'),'utf8')).summary.totalClicks,2);
   assert((await page.getByRole('link',{name:'Поддержать на Ko-fi ↗',exact:true}).getAttribute('href')).startsWith('https://ko-fi.com/pavelzayats'));
   assert.deepEqual(api,[]);assert.deepEqual(failed,[]);assert.deepEqual(errors,[]);
-  results.push({passed:true,base,mouseSHA256:expected,scenarios:['static-subpath-assets','same-mouse-bytes','two-held-buttons-and-release','wheel-feedback','AI-unavailable-without-API-requests','history-and-JSON-export','support-link'],apiRequests:api.length,errors,failed});
+  results.push({passed:true,base,mouseSHA256:expected,scenarios:['static-subpath-assets','same-mouse-bytes','neutral-physical-button-depression','two-held-buttons-and-release','wheel-up-and-down-arrows','official-white-logo','AI-unavailable-without-API-requests','history-and-JSON-export','support-link'],apiRequests:api.length,errors,failed});
   await page.close();
 } finally {
   await browser?.close();

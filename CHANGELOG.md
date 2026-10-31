@@ -1,5 +1,9 @@
 # Изменения
 
+## 1.2.1 preview
+
+Neutral physical button depression replaces green tint. Directional white arrows appear above/below the wheel. The original official white RemTeh logo is displayed on the mouse. Pressed indicator labels use neutral inset states. Base mouse artwork and diagnostic measurements are unchanged.
+
 ## 1.2.0 preview
 
 Новый графитовый интерфейс, компактная навигация и прозрачная оригинальная мышь с подсветкой нажатий. Исправлен подсчёт одновременных кнопок и очистка состояния при потере фокуса. Внешняя таблица стилей визуализации работает с существующей CSP без ослабления политики. Добавлена добровольная поддержка RemTeh через Ko-fi и приглашение после полезного действия, скрываемое на 30 дней. Формат 1.1 отчётов остаётся читаемым.
