@@ -10,7 +10,9 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:browser": "node scripts/test-browser.mjs"
+    "test:browser": "node scripts/test-browser.mjs",
+    "build:site": "vite build --mode site",
+    "test:site": "node scripts/test-site.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
