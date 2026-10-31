@@ -1,10 +1,18 @@
-# RemTeh Mouse Tester 1.2.1 preview
+# RemTeh Mouse Tester 1.2.2 preview
 
 Проверка наблюдаемых событий мыши в браузере: кнопки, удержание, колесо, движение и рисование. Текущая сессия не сбрасывается при смене вкладок. История, JSON, импорт для сравнения и печать / PDF работают без ИИ.
 
-[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.2.1).
+[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.2.2).
 
-![Mouse Tester 1.2.1, онлайн-версия](docs/assets/app-1.2.1.png)
+| Быстрые проверки онлайн | | | | |
+|---|---|---|---|---|
+| [**Кнопки и удержание**](https://remteh-by.github.io/Mouse-Tester/#buttons) | [**Колесо**](https://remteh-by.github.io/Mouse-Tester/#wheel) | [**Движение**](https://remteh-by.github.io/Mouse-Tester/#movement) | [**Рисование**](https://remteh-by.github.io/Mouse-Tester/#sensor) | [**Отчёт**](https://remteh-by.github.io/Mouse-Tester/#report) |
+
+![Mouse Tester 1.2.2, онлайн-версия](docs/assets/app-1.2.2.png)
+
+## Новое в 1.2.2
+
+При нажатии всех пяти кнопок появляются белые стрелки. Боковые кнопки вписаны в левую грань корпуса, подписаны «Вперёд» и «Назад» и заметно уходят внутрь корпуса. Логотип оформлен как гравировка с мягким металлическим переливом; при уменьшении движения в настройках системы перелив отключается. Форма официального логотипа и исходное изображение мыши сохранены. Среднее нажатие смещает только резиновое колёсико: пластиковая рамка остаётся жёсткой. Прямые ссылки открывают нужную проверку, смена вкладок сохраняет текущую сессию.
 
 ## Новое в 1.2.1
 
@@ -18,7 +26,7 @@
 
 ## Онлайн-версия
 
-Откройте [remteh-by.github.io/Mouse-Tester](https://remteh-by.github.io/Mouse-Tester/). Установка не нужна. Используется та же оригинальная мышь без фона и та же анимация кнопок/колеса, что на странице [теста мышки RemTeh](https://remteh.by/remont-myshek/test-myshek).
+Откройте [remteh-by.github.io/Mouse-Tester](https://remteh-by.github.io/Mouse-Tester/). Установка не нужна. Используется то же исходное изображение оригинальной мыши без фона, что на странице [теста мышки RemTeh](https://remteh.by/remont-myshek/test-myshek).
 
 Кнопки, колесо, движение, рисование, локальная история, сравнение JSON и печать работают в браузере. Измерения автоматически никуда не отправляются. ИИ-помощник в этой онлайн-версии не подключён. Основные тесты доступны без оплаты.
 
