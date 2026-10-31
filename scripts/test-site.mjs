@@ -49,10 +49,11 @@ try {
       const image=mouse.shadowRoot.querySelector('img.base');
       return {width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth,
         shellWidth:document.querySelector('.lab-shell').getBoundingClientRect().width,
+        indicatorOverflow:[...document.querySelectorAll('.button-indicators span')].some(node=>node.scrollWidth>node.clientWidth),
         imageURL:image.currentSrc,imageWidth:image.naturalWidth,
         policy:!!document.querySelector('meta[http-equiv="Content-Security-Policy"]')};
     });
-    assert.equal(state.overflow,false);assert.equal(state.imageWidth,800);assert(state.policy);
+    assert.equal(state.overflow,false);assert.equal(state.indicatorOverflow,false);assert.equal(state.imageWidth,800);assert(state.policy);
     if(width>=1920)assert(state.shellWidth>width*.9);
     assert(new URL(state.imageURL).pathname.startsWith(prefix));
     imageURL=state.imageURL;
