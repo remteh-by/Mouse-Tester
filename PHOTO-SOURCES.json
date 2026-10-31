@@ -1,0 +1,12 @@
+[
+  {
+    "asset_path": "public/devices/remteh-mouse.webp",
+    "type": "original-generated-illustration",
+    "tool": "built-in imagegen",
+    "requested_by_owner": "Unique realistic unbranded mouse with a transparent background and animated buttons",
+    "background": "transparent alpha",
+    "sha256": "02270b54a0cab6aa69cff351cb6e75aab07dd9fdff93fc7f6f22526b1fae5286",
+    "dimensions": "800x1200",
+    "bytes": 64340
+  }
+]

@@ -36,6 +36,14 @@ try{
  await page.getByRole('status').filter({hasText:'Текущая сессия остаётся открытой'}).waitFor();
  assert.equal(await page.locator('dd').first().innerText(),'2');
  results.push({app:'mouse',scenario:'storage-failure-preserves-current-session',passed:true});
+ await page.getByRole('region',{name:'Панель измерений'}).hover();
+ await page.mouse.down({button:'left'});await page.mouse.down({button:'right'});
+ await page.waitForTimeout(250);assert.equal(await page.locator('dd').first().innerText(),'4');
+ assert.equal(await page.locator('[data-pressed="true"]').count(),2);
+ await page.mouse.up({button:'right'});await page.mouse.up({button:'left'});
+ await page.waitForTimeout(250);assert.equal(await page.locator('[data-pressed="true"]').count(),0);
+ results.push({app:'mouse',scenario:'simultaneous-left-right-buttons-counted-and-released',passed:true});
+
  await page.close();
 }finally{await browser?.close();if(child.exitCode===null){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}fs.rmSync(temporary,{recursive:true,force:true});fs.writeFileSync(out+'/results.json',JSON.stringify(results,null,2));}
 console.log('Mouse browser checks passed, including failed-storage preservation');

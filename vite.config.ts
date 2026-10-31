@@ -6,7 +6,8 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    build: {outDir:"dist/client",sourcemap:false},
+    // Shadow-root styles must remain same-origin files under the strict CSP.
+    build: {outDir:"dist/client",sourcemap:false,assetsInlineLimit:0},
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
