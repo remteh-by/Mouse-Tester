@@ -1,5 +1,9 @@
 # Изменения
 
+## 1.2.2 preview
+
+White press arrows for all five buttons, thumb buttons integrated into the left side with inward movement, arrows and labels. Exact official logo alpha used for recessed engraving with a restrained metallic shade animation; reduced-motion support. Middle-click moves only the rubber wheel, leaving the housing rigid. Deep links open each test without clearing the session. Back/Forward mouse releases no longer trigger browser navigation inside the test panel.
+
 ## 1.2.1 preview
 
 Neutral physical button depression replaces green tint. Directional white arrows appear above/below the wheel. The original official white RemTeh logo is displayed on the mouse. Pressed indicator labels use neutral inset states. Base mouse artwork and diagnostic measurements are unchanged.
