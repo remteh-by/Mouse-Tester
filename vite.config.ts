@@ -3,11 +3,19 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), ...(mode === 'site' ? [{
+      name: 'static-site-policy',
+      transformIndexHtml: () => [{
+        tag: 'meta',
+        attrs: {'http-equiv':'Content-Security-Policy', content:"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'"},
+        injectTo: 'head-prepend' as const,
+      }],
+    }] : [])],
+    base: mode === 'site' ? '/Mouse-Tester/' : '/',
     // Shadow-root styles must remain same-origin files under the strict CSP.
-    build: {outDir:"dist/client",sourcemap:false,assetsInlineLimit:0},
+    build: {outDir:mode === 'site' ? "dist/site" : "dist/client",sourcemap:false,assetsInlineLimit:0},
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
