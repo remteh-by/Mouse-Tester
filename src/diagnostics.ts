@@ -4,7 +4,7 @@ export type Observation = {t:number; kind:string; values:number[]};
 export interface Conditions {input:InputKind; clickMode:'free'|'single'; bounceThresholdMs:number; scrollMode:'free'|'up'|'down'}
 export interface Summary {totalClicks:number; suspectedBounce:number; scrollReversals:number; pointerEvents:number; eventRateHz:number|null; peakEventRateHz:number|null; completedHolds:number; meanHoldMs:number|null}
 export interface Report {
-  schema:1; kind:'mouse'; session_id:string; application:'RemTeh Mouse Tester'; version:'1.1.0';
+  schema:1; kind:'mouse'; session_id:string; application:'RemTeh Mouse Tester'; version:string;
   started_at:string; timezone:string; duration_ms:number; environment:string; device:string;
   source:EventSource; transport:'browser-not-reported'; conditions:Conditions; observations:Observation[];
   summary:Summary; trace_truncated:boolean; comment:string; previous_session_id:string|null;
@@ -62,7 +62,7 @@ export class MouseSession {
   }
   pause(){this.downs.clear();this.releases.clear();this.lastPointer=null;this.lastWheel=null;this.pointerWindow=[];this.lastSample='';}
   report(device='',comment='',previous:string|null=null):Report {
-    return {schema:1,kind:'mouse',session_id:this.id,application:'RemTeh Mouse Tester',version:'1.1.0',
+    return {schema:1,kind:'mouse',session_id:this.id,application:'RemTeh Mouse Tester',version:'1.2.0',
       started_at:this.startedAt,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,duration_ms:Math.max(0,performance.now()-this.start),
       environment:typeof navigator==='undefined'?'test':navigator.userAgent,device:device.slice(0,160),source:this.source,
       transport:'browser-not-reported',conditions:{...this.conditions},observations:this.events.map(event=>({...event,values:[...event.values]})),
