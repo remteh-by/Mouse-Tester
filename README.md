@@ -1,10 +1,14 @@
-# RemTeh Mouse Tester 1.2.0 preview
+# RemTeh Mouse Tester 1.2.1 preview
 
 Проверка наблюдаемых событий мыши в браузере: кнопки, удержание, колесо, движение и рисование. Текущая сессия не сбрасывается при смене вкладок. История, JSON, импорт для сравнения и печать / PDF работают без ИИ.
 
-[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.2.0).
+[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.2.1).
 
-![Mouse Tester 1.2.0, онлайн-версия](docs/assets/app-1.2.0.png)
+![Mouse Tester 1.2.1, онлайн-версия](docs/assets/app-1.2.1.png)
+
+## Новое в 1.2.1
+
+Кнопки на изображении визуально вдавливаются за счёт смещения, перспективы и тени — без зелёной заливки. При прокрутке появляется белая стрелка над или под колёсиком. На корпусе размещён исходный официальный белый логотип RemTeh. Основное изображение мыши не менялось.
 
 ## Новое в 1.2.0
 

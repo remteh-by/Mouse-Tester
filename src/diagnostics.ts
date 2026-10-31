@@ -62,7 +62,7 @@ export class MouseSession {
   }
   pause(){this.downs.clear();this.releases.clear();this.lastPointer=null;this.lastWheel=null;this.pointerWindow=[];this.lastSample='';}
   report(device='',comment='',previous:string|null=null):Report {
-    return {schema:1,kind:'mouse',session_id:this.id,application:'RemTeh Mouse Tester',version:'1.2.0',
+    return {schema:1,kind:'mouse',session_id:this.id,application:'RemTeh Mouse Tester',version:'1.2.1',
       started_at:this.startedAt,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,duration_ms:Math.max(0,performance.now()-this.start),
       environment:typeof navigator==='undefined'?'test':navigator.userAgent,device:device.slice(0,160),source:this.source,
       transport:'browser-not-reported',conditions:{...this.conditions},observations:this.events.map(event=>({...event,values:[...event.values]})),

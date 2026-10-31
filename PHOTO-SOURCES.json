@@ -8,5 +8,14 @@
     "sha256": "02270b54a0cab6aa69cff351cb6e75aab07dd9fdff93fc7f6f22526b1fae5286",
     "dimensions": "800x1200",
     "bytes": 64340
+  },
+  {
+    "asset_path": "shared/remteh-logo-white.png",
+    "type": "official-brand-asset",
+    "source_url": "https://remteh.by/images/logo_white.png",
+    "sha256": "fe0c7282454f554af5de21260152dcbe379b3f5cf70a80b8c2903d2404541f9c",
+    "dimensions": "161x38",
+    "bytes": 8248,
+    "changes": "none; official white RemTeh logo reused at owner request"
   }
 ]
