@@ -152,7 +152,18 @@ try {
   const downloadEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Экспорт JSON',exact:true}).click();
   const download=await downloadEvent;await download.saveAs(path.join(out,'site-session.json'));
   assert.equal(JSON.parse(fs.readFileSync(path.join(out,'site-session.json'),'utf8')).summary.totalClicks,5);
-  assert((await page.getByRole('link',{name:'Поддержать на Ko-fi ↗',exact:true}).getAttribute('href')).startsWith('https://ko-fi.com/pavelzayats'));
+  await page.getByRole('button',{name:'Выбрать способ поддержки',exact:true}).click();
+  const support=page.getByRole('dialog',{name:'Поддержка RemTeh'});
+  const methods=JSON.parse(fs.readFileSync(path.join(root,'support/registry.json'),'utf8')).methods;
+  for(const method of methods){
+    await support.getByRole('combobox').selectOption(method.id);
+    assert.equal(await support.getByRole('link',{name:'Открыть страницу сервиса ↗'}).getAttribute('href'),method.url);
+    await support.locator('summary').click();
+    assert(await support.locator('img').evaluate(img=>img.complete&&img.naturalWidth>0));
+    await support.locator('summary').click();
+  }
+  await page.keyboard.press('Escape');assert.equal(await support.isVisible(),false);
+
   for(const [id,title] of [['buttons','Кнопки'],['wheel','Колесо'],['movement','Движение'],['sensor','Рисование'],['report','Отчёт']]){
     await page.evaluate(id=>{location.hash=id;},id);
     await page.locator('nav.tabs button[aria-current="page"]').filter({hasText:title}).waitFor();

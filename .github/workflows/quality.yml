@@ -15,7 +15,7 @@ jobs:
       - run: npm run lint && npm test && npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
-      - run: npm run build:site && npm run test:site && npm run test:offline
+      - run: npm run build:site && npm run test:site && node scripts/test-support.mjs && npm run test:offline
       - run: npm audit --omit=dev --audit-level=high
       - uses: actions/upload-artifact@v4
         with:

@@ -6,6 +6,8 @@ on:
       - 'src/**'
       - 'shared/**'
       - 'public/**'
+      - 'support/**'
+      - 'scripts/test-support.mjs'
       - 'index.html'
       - 'package*.json'
       - 'vite.config.ts'
@@ -35,7 +37,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run build:site
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:site && npm run test:offline
+      - run: npm run test:site && node scripts/test-support.mjs && npm run test:offline
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
