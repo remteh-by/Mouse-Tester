@@ -18,9 +18,9 @@ try{
  for(const width of [390,1920,2560,3840]){
   const context=await browser.newContext({viewport:{width,height:1100},locale:'en-US'}),page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  await page.addInitScript(()=>{window.__copied=null;Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>{if(window.__denyCopy)throw new Error('Denied');window.__copied=text;}}});});
+  await page.addInitScript(()=>{localStorage.setItem('remteh-support-method-v1','boosty');window.__copied=null;Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>{if(window.__denyCopy)throw new Error('Denied');window.__copied=text;}}});});
   await page.goto(base);await page.locator(kind==='mouse'?'.support-compact .support-trigger':'.app-footer button').click();
-  const dialog=page.getByRole('dialog'),select=dialog.getByRole('combobox');assert.equal(await select.locator('option').count(),6);
+  const dialog=page.getByRole('dialog'),select=dialog.getByRole('combobox');assert.equal(await select.locator('option').count(),1);
   for(const method of registry.methods){
    await select.selectOption(method.id);
    assert.equal(await dialog.locator('.support-destination').innerText(),method.url);
@@ -40,16 +40,16 @@ try{
   if(width===390||width===1920)await page.screenshot({path:out+'/'+kind+'-support-'+width+'.png'});
   await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog').count(),0);
   await page.reload();await page.locator(kind==='mouse'?'.support-compact .support-trigger':'.app-footer button').click();
-  assert.equal(await page.getByRole('dialog').getByRole('combobox').inputValue(),'okx_pay');
-  results.push({width,methods:6,exactDestinations:true,clipboard:true,clipboardFailure:true,qrImages:true,persistence:true,overflow:false,errors});
+  assert.equal(await page.getByRole('dialog').getByRole('combobox').inputValue(),'kofi');
+  results.push({width,methods:1,exactDestinations:true,clipboard:true,clipboardFailure:true,qrImages:true,persistence:true,overflow:false,errors});
   await context.close();
  }
  // Optional preferences failing must not prevent the donation selection.
  const context=await browser.newContext(),page=await context.newPage();
  await page.addInitScript(()=>{Storage.prototype.setItem=function(){throw new Error('Storage full');};});await page.goto(base);
  await page.locator(kind==='mouse'?'.support-compact .support-trigger':'.app-footer button').click();
- await page.getByRole('dialog').getByRole('combobox').selectOption('donatepay');
- assert.equal(await page.locator('.support-actions a').filter({visible:true}).getAttribute('href'),'https://donatepay.ru/don/1541009');
+ await page.getByRole('dialog').getByRole('combobox').selectOption('kofi');
+ assert.equal(await page.locator('.support-actions a').filter({visible:true}).getAttribute('href'),'https://ko-fi.com/pavelzayats');
  await context.close();results.push({storageFailure:'selection remains usable'});
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));fs.writeFileSync(out+'/support-results.json',JSON.stringify(results,null,2));}
-console.log(kind+': six correct destinations, copy/failure, QR, choice persistence, denied storage and four widths passed');
+console.log(kind+': only the configured destination, copy/failure, QR, choice persistence, denied storage and four widths passed');

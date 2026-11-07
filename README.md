@@ -1,16 +1,20 @@
-# RemTeh Mouse Tester 1.3.1 preview
+# RemTeh Mouse Tester 1.3.2 preview
 
 Проверка наблюдаемых событий мыши в браузере: кнопки, удержание, колесо, движение и рисование. Текущая сессия не сбрасывается при смене вкладок. История, JSON, импорт для сравнения и печать / PDF работают без ИИ.
 
-[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.3.1).
+[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.3.2).
 
 | Быстрые проверки онлайн | | | | |
 |---|---|---|---|---|
 | [**Кнопки и удержание**](https://remteh-by.github.io/Mouse-Tester/#buttons) | [**Колесо**](https://remteh-by.github.io/Mouse-Tester/#wheel) | [**Движение**](https://remteh-by.github.io/Mouse-Tester/#movement) | [**Рисование**](https://remteh-by.github.io/Mouse-Tester/#sensor) | [**Отчёт**](https://remteh-by.github.io/Mouse-Tester/#report) |
 
-![Mouse Tester 1.3.1, онлайн-версия](docs/assets/app-1.3.1.png)
+![Mouse Tester 1.3.2, онлайн-версия](docs/assets/app-1.3.2.png)
 
-## Новое в 1.3.1
+## Новое в 1.3.2
+
+В меню поддержки оставлена настроенная страница Ko-fi; неподтверждённые варианты скрыты.
+
+## Сохранённые возможности
 
 Боковые клавиши больше не нарисованы отдельными накладками: двигаются исходные тонкие кнопки на левой грани мыши. Смещение и тень показывают нажатие без растягивания пластика. Стрелки и гравировка официального логотипа сохранены.
 
@@ -103,6 +107,10 @@ Browser regression: run `npx playwright install chromium`, then `npm run test:br
 
 ## Support options
 
-[Ko-fi, Afdian, Boosty, DonationAlerts, DonatePay and OKX Pay](SUPPORT.md). Optional support; each method shows its current setup/payment-verification status.
+[Support RemTeh on Ko-fi](SUPPORT.md). Optional support through the configured page; pending and unverified providers are hidden.
 
-![Выбор способа поддержки в текущей веб-сборке](docs/assets/support-1.3.1.png)
+![Выбор способа поддержки в текущей веб-сборке](docs/assets/support-1.3.2.png)
+
+## Support options · 2026-11-07
+
+Only the configured [Ko-fi page](https://ko-fi.com/pavelzayats) is offered. Methods awaiting approval, verification or payment-readiness checks have been removed from the picker. Existing saved choices fall back to Ko-fi. Diagnostics remain free. See [SUPPORT.md](SUPPORT.md).
