@@ -1,5 +1,9 @@
 # Изменения
 
+## 1.3.3
+
+Экспорт JSON теперь записывает номер установленной версии Mouse Tester. Это позволяет правильно сопоставлять отчёты в Device Lab.
+
 ## 1.2.2 preview
 
 White press arrows for all five buttons, thumb buttons integrated into the left side with inward movement, arrows and labels. Exact official logo alpha used for recessed engraving with a restrained metallic shade animation; reduced-motion support. Middle-click moves only the rubber wheel, leaving the housing rigid. Deep links open each test without clearing the session. Back/Forward mouse releases no longer trigger browser navigation inside the test panel.

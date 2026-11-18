@@ -1,14 +1,18 @@
-# RemTeh Mouse Tester 1.3.2 preview
+# RemTeh Mouse Tester 1.3.3 preview
 
 Проверка наблюдаемых событий мыши в браузере: кнопки, удержание, колесо, движение и рисование. Текущая сессия не сбрасывается при смене вкладок. История, JSON, импорт для сравнения и печать / PDF работают без ИИ.
 
-[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.3.2).
+[**Открыть Mouse Tester онлайн →**](https://remteh-by.github.io/Mouse-Tester/) · [Production ZIP, исходники и SHA-256](https://github.com/remteh-by/Mouse-Tester/releases/tag/v1.3.3).
 
 | Быстрые проверки онлайн | | | | |
 |---|---|---|---|---|
 | [**Кнопки и удержание**](https://remteh-by.github.io/Mouse-Tester/#buttons) | [**Колесо**](https://remteh-by.github.io/Mouse-Tester/#wheel) | [**Движение**](https://remteh-by.github.io/Mouse-Tester/#movement) | [**Рисование**](https://remteh-by.github.io/Mouse-Tester/#sensor) | [**Отчёт**](https://remteh-by.github.io/Mouse-Tester/#report) |
 
-![Mouse Tester 1.3.2, онлайн-версия](docs/assets/app-1.3.2.png)
+![Mouse Tester 1.3.3, онлайн-версия](docs/assets/app-1.3.3.png)
+
+## Новое в 1.3.3
+
+Экспорт JSON теперь записывает номер установленной версии Mouse Tester. Это позволяет правильно сопоставлять отчёты в Device Lab.
 
 ## Новое в 1.3.2
 
@@ -109,7 +113,7 @@ Browser regression: run `npx playwright install chromium`, then `npm run test:br
 
 [Support RemTeh on Ko-fi](SUPPORT.md). Optional support through the configured page; pending and unverified providers are hidden.
 
-![Выбор способа поддержки в текущей веб-сборке](docs/assets/support-1.3.2.png)
+![Выбор способа поддержки в версии 1.3.2](docs/assets/support-1.3.2.png)
 
 ## Support options · 2026-11-07
 
